@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { Service } from "../../service";
+import { toolResponse } from "../response";
 
 export function registerSessionTools(server: McpServer, svc: Service): void {
   server.registerTool(
@@ -10,13 +11,7 @@ export function registerSessionTools(server: McpServer, svc: Service): void {
       description: "Begin a new wandering-trader run. Returns session_id and the starting city. Narrate the arrival richly but do not contradict the structured data.",
       inputSchema: { seed: z.number().int().optional() },
     },
-    async ({ seed }) => {
-      const res = svc.startGame({ seed });
-      return {
-        content: [{ type: "text", text: JSON.stringify(res, null, 2) }],
-        structuredContent: res as unknown as Record<string, unknown>,
-      };
-    },
+    async ({ seed }) => toolResponse(svc.startGame({ seed })),
   );
 
   server.registerTool(
@@ -26,13 +21,7 @@ export function registerSessionTools(server: McpServer, svc: Service): void {
       description: "Return the full state of the current run.",
       inputSchema: { session_id: z.string() },
     },
-    async ({ session_id }) => {
-      const state = svc.getState(session_id);
-      return {
-        content: [{ type: "text", text: JSON.stringify(state, null, 2) }],
-        structuredContent: state as unknown as Record<string, unknown>,
-      };
-    },
+    async ({ session_id }) => toolResponse(svc.getState(session_id)),
   );
 
   server.registerTool(
@@ -42,9 +31,6 @@ export function registerSessionTools(server: McpServer, svc: Service): void {
       description: "Resume an existing run. Returns a brief status summary: day, gold, current city, days remaining.",
       inputSchema: { session_id: z.string() },
     },
-    async ({ session_id }) => {
-      const res = svc.resumeGame(session_id);
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }], structuredContent: res as Record<string, unknown> };
-    },
+    async ({ session_id }) => toolResponse(svc.resumeGame(session_id)),
   );
 }

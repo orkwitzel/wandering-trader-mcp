@@ -123,7 +123,6 @@ export interface PendingLeg {
   from_city_id: string;
   to_city_id: string;
   total_travel_time: number;
-  elapsed_travel_time: number;
   remaining_encounters: PendingEncounter[];
   current_encounter?: PendingEncounter;
 }

@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { Service } from "../../service";
+import { toolResponse } from "../response";
 
 export function registerCityTools(server: McpServer, svc: Service): void {
   server.registerTool(
@@ -10,10 +11,7 @@ export function registerCityTools(server: McpServer, svc: Service): void {
       description: "Examine the current city: market prices, rare items, hires, and any rumors you know. Narrate the scene richly but do not invent stock or prices not in the structured data.",
       inputSchema: { session_id: z.string() },
     },
-    async ({ session_id }) => {
-      const res = svc.look(session_id);
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }], structuredContent: res as unknown as Record<string, unknown> };
-    },
+    async ({ session_id }) => toolResponse(svc.look(session_id)),
   );
 
   server.registerTool(
@@ -27,10 +25,7 @@ export function registerCityTools(server: McpServer, svc: Service): void {
         quantity: z.number().int().positive(),
       },
     },
-    async ({ session_id, item, quantity }) => {
-      const res = svc.buy(session_id, { item, quantity });
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }], structuredContent: res as Record<string, unknown> };
-    },
+    async ({ session_id, item, quantity }) => toolResponse(svc.buy(session_id, { item, quantity })),
   );
 
   server.registerTool(
@@ -44,10 +39,7 @@ export function registerCityTools(server: McpServer, svc: Service): void {
         quantity: z.number().int().positive(),
       },
     },
-    async ({ session_id, item, quantity }) => {
-      const res = svc.sell(session_id, { item, quantity });
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }], structuredContent: res as Record<string, unknown> };
-    },
+    async ({ session_id, item, quantity }) => toolResponse(svc.sell(session_id, { item, quantity })),
   );
 
   server.registerTool(
@@ -57,10 +49,7 @@ export function registerCityTools(server: McpServer, svc: Service): void {
       description: "Hire a crew member from the current city. Pays the hire fee immediately; daily wages deduct per travel tick.",
       inputSchema: { session_id: z.string(), hire_id: z.string() },
     },
-    async ({ session_id, hire_id }) => {
-      const res = svc.hire(session_id, hire_id);
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }], structuredContent: res as Record<string, unknown> };
-    },
+    async ({ session_id, hire_id }) => toolResponse(svc.hire(session_id, hire_id)),
   );
 
   server.registerTool(
@@ -70,10 +59,7 @@ export function registerCityTools(server: McpServer, svc: Service): void {
       description: "Release a crew member. No refund of hire fee.",
       inputSchema: { session_id: z.string(), crew_id: z.string() },
     },
-    async ({ session_id, crew_id }) => {
-      const res = svc.dismiss(session_id, crew_id);
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }], structuredContent: res as Record<string, unknown> };
-    },
+    async ({ session_id, crew_id }) => toolResponse(svc.dismiss(session_id, crew_id)),
   );
 
   server.registerTool(
@@ -83,9 +69,6 @@ export function registerCityTools(server: McpServer, svc: Service): void {
       description: "Spend about a tenth of a day in the local taverns listening for gossip about other cities and roads.",
       inputSchema: { session_id: z.string() },
     },
-    async ({ session_id }) => {
-      const res = svc.listen(session_id);
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }], structuredContent: res as Record<string, unknown> };
-    },
+    async ({ session_id }) => toolResponse(svc.listen(session_id)),
   );
 }

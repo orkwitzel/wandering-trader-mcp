@@ -1,6 +1,7 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { Service } from "../../service";
+import { toolResponse } from "../response";
 
 export function registerTravelTools(server: McpServer, svc: Service): void {
   server.registerTool(
@@ -10,10 +11,7 @@ export function registerTravelTools(server: McpServer, svc: Service): void {
       description: "Preview a travel leg to a neighboring city — estimated time, terrain, active events, expected wage cost. Does not advance the clock.",
       inputSchema: { session_id: z.string(), destination_city_id: z.string() },
     },
-    async ({ session_id, destination_city_id }) => {
-      const res = svc.planTravel(session_id, destination_city_id);
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }], structuredContent: res as unknown as Record<string, unknown> };
-    },
+    async ({ session_id, destination_city_id }) => toolResponse(svc.planTravel(session_id, destination_city_id)),
   );
 
   server.registerTool(
@@ -23,9 +21,6 @@ export function registerTravelTools(server: McpServer, svc: Service): void {
       description: "Commit to traveling to a neighboring city. Rolls weather, weight, encounters. Returns 'arrived', 'encounter' (with options to resolve), or 'ended' if day 7 is crossed.",
       inputSchema: { session_id: z.string(), destination_city_id: z.string() },
     },
-    async ({ session_id, destination_city_id }) => {
-      const res = svc.travel(session_id, destination_city_id);
-      return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }], structuredContent: res as unknown as Record<string, unknown> };
-    },
+    async ({ session_id, destination_city_id }) => toolResponse(svc.travel(session_id, destination_city_id)),
   );
 }

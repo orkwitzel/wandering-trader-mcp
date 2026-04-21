@@ -1,7 +1,7 @@
 import type { Database } from "bun:sqlite";
 import type { GameState } from "./engine/types";
 import { COMMODITIES, DAY_LIMIT } from "./engine/types";
-import type { Commodity } from "./engine/types";
+import type { Commodity, EncounterOption } from "./engine/types";
 import type { Rng } from "./engine/rng";
 import { generateWorld } from "./engine/world-gen";
 import { populateCityOffers, priceTick, sellPriceFor, applyBuyMemory, applySellMemory } from "./engine/economy";
@@ -51,9 +51,9 @@ export interface Service {
     | { ok: false; error: string };
   travel(sessionId: string, destinationCityId: string):
     | { outcome: "arrived"; day: number; arrived_at: { id: string; name: string }; notes: string[] }
-    | { outcome: "encounter"; day: number; encounter: { id: string; category: string; kind: string; narrative_seed: string; options: { id: string; success_pct: number; cost_gold?: number }[] } }
+    | { outcome: "encounter"; day: number; encounter: { id: string; category: string; kind: string; narrative_seed: string; options: { id: EncounterOption["id"]; success_pct: number; cost_gold?: number }[] } }
     | { outcome: "ended"; final_score: number };
-  resolveEncounter(sessionId: string, choice: string): ReturnType<Service["travel"]>;
+  resolveEncounter(sessionId: string, choice: EncounterOption["id"]): ReturnType<Service["travel"]>;
   endGame(sessionId: string): { final_score: number; breakdown: { gold: number; commodities: number; unique_items: number } };
   resumeGame(sessionId: string): {
     session_id: string; day: number; gold: number;
@@ -91,6 +91,7 @@ function arriveAt(
 
   // If day >= DAY_LIMIT, finalize.
   if (state.day >= DAY_LIMIT) {
+    state.pending_leg = undefined;
     const finalCity = state.world.cities.find(c => c.id === state.current_city_id)!;
     const { total } = tallyFinalScore(state.gold, state.inventory, finalCity);
     saveGame(db, state, serializeRng(rng), "completed");
@@ -107,7 +108,7 @@ function arriveAt(
 export function createService(db: Database): Service {
   return {
     startGame(args = {}) {
-      const seed = args.seed ?? Math.floor(Math.random() * 0x7fffffff);
+      const seed = args.seed ?? (crypto.getRandomValues(new Uint32Array(1))[0]! & 0x7fffffff);
       const rng = createRng(seed);
       const world = generateWorld(rng);
       const startingCity = world.cities[rng.nextInt(0, world.cities.length)]!;
@@ -373,7 +374,6 @@ export function createService(db: Database): Service {
           from_city_id: state.current_city_id,
           to_city_id: destinationCityId,
           total_travel_time: travelCalc.time,
-          elapsed_travel_time: 0,
           remaining_encounters: encounters.slice(1),
           current_encounter: encounters[0]!,
         };
@@ -392,7 +392,7 @@ export function createService(db: Database): Service {
       return arriveAt(db, loaded, state, destinationCityId, rng, travelCalc.notes);
     },
 
-    resolveEncounter(sessionId, choice) {
+    resolveEncounter(sessionId: string, choice: EncounterOption["id"]) {
       const loaded = loadGame(db, sessionId);
       if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
       if (loaded.status === "completed") throw new Error("run is completed");
@@ -401,7 +401,7 @@ export function createService(db: Database): Service {
       const enc = state.pending_leg.current_encounter;
       const rng = deserializeRng(loaded.rng_state);
 
-      const result = resolveEncounter(enc.options, choice as any, rng);
+      const result = resolveEncounter(enc.options, choice, rng);
       const outcome = result.outcome;
       state.gold = Math.max(0, state.gold + outcome.gold_delta);
       state.day += outcome.time_lost_days;

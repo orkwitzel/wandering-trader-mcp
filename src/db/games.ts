@@ -25,8 +25,10 @@ export function saveGame(db: Database, state: GameState, rngState: string, statu
   );
 }
 
+type GameRow = { state_json: string; rng_state: string; created_at: string; updated_at: string; status: "active" | "completed" };
+
 export function loadGame(db: Database, sessionId: string): LoadedGame | null {
-  const row = db.prepare("SELECT * FROM games WHERE id = ?").get(sessionId) as any;
+  const row = db.prepare("SELECT * FROM games WHERE id = ?").get(sessionId) as GameRow | null;
   if (!row) return null;
   return {
     state: JSON.parse(row.state_json) as GameState,

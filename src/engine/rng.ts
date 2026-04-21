@@ -38,17 +38,4 @@ export function serializeRng(r: Rng): string {
   return String(r.state.s);
 }
 
-export function deserializeRng(s: string): Rng {
-  const seed = Number(s) | 0;
-  const state = { s: seed };
-  const raw = mulberry32(state);
-  return {
-    state,
-    next: raw,
-    nextInt(lo, hi) { return lo + Math.floor(raw() * (hi - lo)); },
-    pick<T>(arr: readonly T[]): T {
-      if (arr.length === 0) throw new Error("pick from empty array");
-      return arr[Math.floor(raw() * arr.length)]!;
-    },
-  };
-}
+export const deserializeRng = (s: string): Rng => createRng(Number(s) | 0);
