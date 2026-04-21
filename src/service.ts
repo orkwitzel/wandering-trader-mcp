@@ -43,7 +43,7 @@ export interface Service {
   sell(sessionId: string, args: { item: string; quantity: number }): TradeResult;
   hire(sessionId: string, hireId: string): { ok: boolean; error?: string };
   dismiss(sessionId: string, crewId: string): { ok: boolean; error?: string };
-  listen(sessionId: string): { rumors_added: number; day: number };
+  listen(sessionId: string): { rumors_added: number; day: number } | { ended: true; final_score: number };
   planTravel(sessionId: string, destinationCityId: string):
     | { ok: true; destination: { id: string; name: string; archetype: string };
         estimated_time: number; terrain: string; active_events: { kind: string; start_day: number; duration: number }[];
@@ -315,8 +315,16 @@ export function createService(db: Database): Service {
         });
         added++;
       }
-      saveGame(db, state, serializeRng(rng));
       appendEvent(db, sessionId, state.day, "listen", { rumors_added: added });
+      // If listening pushed day past DAY_LIMIT, finalize the run.
+      if (state.day >= DAY_LIMIT) {
+        const finalCity = state.world.cities.find(c => c.id === state.current_city_id)!;
+        const { total } = tallyFinalScore(state.gold, state.inventory, finalCity);
+        saveGame(db, state, serializeRng(rng), "completed");
+        appendEvent(db, sessionId, state.day, "end_game", { final_score: total });
+        return { ended: true as const, final_score: total };
+      }
+      saveGame(db, state, serializeRng(rng));
       return { rumors_added: added, day: state.day };
     },
 
