@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { GameState } from "./engine/types";
+import type { GameState, World, PendingEncounter } from "./engine/types";
 import { COMMODITIES, DAY_LIMIT } from "./engine/types";
 import type { Commodity, EncounterOption } from "./engine/types";
 import type { Rng } from "./engine/rng";
@@ -59,6 +59,29 @@ export interface Service {
     session_id: string; day: number; gold: number;
     current_city: { id: string; name: string };
     days_remaining: number; status: "active" | "completed";
+  };
+}
+
+function requireGame(db: Database, sessionId: string): LoadedGame {
+  const loaded = loadGame(db, sessionId);
+  if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
+  return loaded;
+}
+
+function requireActiveGame(db: Database, sessionId: string): LoadedGame {
+  const loaded = requireGame(db, sessionId);
+  if (loaded.status === "completed") throw new Error("run is completed");
+  return loaded;
+}
+
+function findEdge(world: World, a: string, b: string) {
+  return world.edges.find(e => (e.a === a && e.b === b) || (e.a === b && e.b === a));
+}
+
+function toEncounterPayload(enc: PendingEncounter) {
+  return {
+    id: enc.id, category: enc.category, kind: enc.kind, narrative_seed: enc.narrative_seed,
+    options: enc.options.map(o => ({ id: o.id, success_pct: o.success_pct, cost_gold: o.cost_gold })),
   };
 }
 
@@ -146,14 +169,11 @@ export function createService(db: Database): Service {
     },
 
     getState(sessionId) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
-      return loaded.state;
+      return requireGame(db, sessionId).state;
     },
 
     look(sessionId) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
+      const loaded = requireGame(db, sessionId);
       const state = loaded.state;
       const city = state.world.cities.find(c => c.id === state.current_city_id)!;
 
@@ -182,9 +202,7 @@ export function createService(db: Database): Service {
     },
 
     buy(sessionId, { item, quantity }) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
-      if (loaded.status === "completed") return { ok: false, error: "run is completed" } as const;
+      const loaded = requireActiveGame(db, sessionId);
       const state = loaded.state;
       if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, error: "quantity must be positive integer" } as const;
       const city = state.world.cities.find(c => c.id === state.current_city_id)!;
@@ -216,9 +234,7 @@ export function createService(db: Database): Service {
     },
 
     sell(sessionId, { item, quantity }) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
-      if (loaded.status === "completed") return { ok: false, error: "run is completed" } as const;
+      const loaded = requireActiveGame(db, sessionId);
       const state = loaded.state;
       if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, error: "quantity must be positive integer" } as const;
       const city = state.world.cities.find(c => c.id === state.current_city_id)!;
@@ -250,9 +266,7 @@ export function createService(db: Database): Service {
     },
 
     hire(sessionId, hireId) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
-      if (loaded.status === "completed") return { ok: false, error: "run is completed" };
+      const loaded = requireActiveGame(db, sessionId);
       const state = loaded.state;
       const city = state.world.cities.find(c => c.id === state.current_city_id)!;
       const idx = city.hires_available.findIndex(h => h.id === hireId);
@@ -270,9 +284,7 @@ export function createService(db: Database): Service {
     },
 
     dismiss(sessionId, crewId) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
-      if (loaded.status === "completed") return { ok: false, error: "run is completed" };
+      const loaded = requireActiveGame(db, sessionId);
       const state = loaded.state;
       const idx = state.crew.findIndex(c => c.id === crewId);
       if (idx < 0) return { ok: false, error: `no such crew '${crewId}'` };
@@ -283,9 +295,7 @@ export function createService(db: Database): Service {
     },
 
     listen(sessionId) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
-      if (loaded.status === "completed") return { rumors_added: 0, day: loaded.state.day };
+      const loaded = requireActiveGame(db, sessionId);
       const state = loaded.state;
       state.day += 0.1;
       // Generate 0..2 rumors referencing random other cities.
@@ -311,19 +321,14 @@ export function createService(db: Database): Service {
     },
 
     planTravel(sessionId, destinationCityId) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
+      const loaded = requireGame(db, sessionId);
       const state = loaded.state;
-      const edge = state.world.edges.find(
-        e => (e.a === state.current_city_id && e.b === destinationCityId) ||
-             (e.b === state.current_city_id && e.a === destinationCityId),
-      );
+      const edge = findEdge(state.world, state.current_city_id, destinationCityId);
       if (!edge) return { ok: false, error: "destination is not a direct neighbor" };
       const dest = state.world.cities.find(c => c.id === destinationCityId);
       if (!dest) return { ok: false, error: "unknown destination city" };
 
       // Use a throwaway RNG so the preview doesn't advance the persisted rng_state.
-      // (deserializeRng is already imported at the top of this file.)
       const previewRng = deserializeRng(loaded.rng_state);
       const carried = totalWeight(state.inventory);
       const travelCalc = computeTravelTime(edge, state.world.events, state.day, carried, state.crew, previewRng);
@@ -345,14 +350,9 @@ export function createService(db: Database): Service {
     },
 
     travel(sessionId, destinationCityId) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
-      if (loaded.status === "completed") throw new Error("run is completed");
+      const loaded = requireActiveGame(db, sessionId);
       const state = loaded.state;
-      const edge = state.world.edges.find(
-        e => (e.a === state.current_city_id && e.b === destinationCityId) ||
-             (e.b === state.current_city_id && e.a === destinationCityId),
-      );
+      const edge = findEdge(state.world, state.current_city_id, destinationCityId);
       if (!edge) throw new Error("destination is not a direct neighbor");
 
       const rng = deserializeRng(loaded.rng_state);
@@ -379,13 +379,7 @@ export function createService(db: Database): Service {
         };
         saveGame(db, state, serializeRng(rng));
         appendEvent(db, sessionId, state.day, "travel_encounter", { to: destinationCityId, kind: encounters[0]!.kind });
-        const enc = encounters[0]!;
-        return {
-          outcome: "encounter" as const,
-          day: state.day,
-          encounter: { id: enc.id, category: enc.category, kind: enc.kind, narrative_seed: enc.narrative_seed,
-            options: enc.options.map(o => ({ id: o.id, success_pct: o.success_pct, cost_gold: o.cost_gold })) },
-        };
+        return { outcome: "encounter" as const, day: state.day, encounter: toEncounterPayload(encounters[0]!) };
       }
 
       // No encounters — straight arrival.
@@ -393,9 +387,7 @@ export function createService(db: Database): Service {
     },
 
     resolveEncounter(sessionId: string, choice: EncounterOption["id"]) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
-      if (loaded.status === "completed") throw new Error("run is completed");
+      const loaded = requireActiveGame(db, sessionId);
       const state = loaded.state;
       if (!state.pending_leg?.current_encounter) throw new Error("no pending encounter to resolve");
       const enc = state.pending_leg.current_encounter;
@@ -433,12 +425,7 @@ export function createService(db: Database): Service {
         state.pending_leg.current_encounter = next;
         state.pending_leg.remaining_encounters = remaining.slice(1);
         saveGame(db, state, serializeRng(rng));
-        return {
-          outcome: "encounter" as const,
-          day: state.day,
-          encounter: { id: next.id, category: next.category, kind: next.kind, narrative_seed: next.narrative_seed,
-            options: next.options.map(o => ({ id: o.id, success_pct: o.success_pct, cost_gold: o.cost_gold })) },
-        };
+        return { outcome: "encounter" as const, day: state.day, encounter: toEncounterPayload(next) };
       }
 
       // Arrive at destination.
@@ -447,8 +434,7 @@ export function createService(db: Database): Service {
     },
 
     endGame(sessionId) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
+      const loaded = requireGame(db, sessionId);
       const state = loaded.state;
       const finalCity = state.world.cities.find(c => c.id === state.current_city_id)!;
       const { total, breakdown } = tallyFinalScore(state.gold, state.inventory, finalCity);
@@ -458,8 +444,7 @@ export function createService(db: Database): Service {
     },
 
     resumeGame(sessionId) {
-      const loaded = loadGame(db, sessionId);
-      if (!loaded) throw new Error(`No game with session_id '${sessionId}'`);
+      const loaded = requireGame(db, sessionId);
       const state = loaded.state;
       const city = state.world.cities.find(c => c.id === state.current_city_id)!;
       return {

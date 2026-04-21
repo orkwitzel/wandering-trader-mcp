@@ -12,12 +12,11 @@ test("end_game returns a final score", () => {
   expect(out.breakdown.gold).toBe(200);
 });
 
-test("after end_game, subsequent write tools reject the session", () => {
+test("after end_game, subsequent write tools throw for completed session", () => {
   const db = new Database(":memory:"); initSchema(db);
   const svc = createService(db);
   const s = svc.startGame({ seed: 51 });
   svc.endGame(s.session_id);
-  const r = svc.buy(s.session_id, { item: "grain", quantity: 1 });
-  expect(r.ok).toBe(false);
-  if (!r.ok) expect(r.error).toContain("completed");
+  // Per I7: invariant violations (session completed) throw; validation errors return {ok:false}.
+  expect(() => svc.buy(s.session_id, { item: "grain", quantity: 1 })).toThrow("run is completed");
 });
