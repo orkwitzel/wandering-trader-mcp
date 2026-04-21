@@ -138,14 +138,14 @@ export function rollEncounters(
 
     // Crew suppression. Each bodyguard rerolls a hostile into nothing with prob SUPPRESSION.
     if (category === "hostile") {
-      let suppressProb = 1 - Math.pow(1 - BODYGUARD_HOSTILE_SUPPRESSION, bodyguards);
+      const suppressProb = 1 - Math.pow(1 - BODYGUARD_HOSTILE_SUPPRESSION, bodyguards);
       if (rng.next() < suppressProb) continue;
     } else if (category === "environmental") {
       let matchingGuides = 0;
       if (edge.terrain === "desert") matchingGuides = desertGuides;
       else if (edge.terrain === "forest") matchingGuides = forestGuides;
       else if (edge.terrain === "coast") matchingGuides = seaGuides;
-      let suppressProb = 1 - Math.pow(1 - GUIDE_ENV_SUPPRESSION, matchingGuides);
+      const suppressProb = 1 - Math.pow(1 - GUIDE_ENV_SUPPRESSION, matchingGuides);
       if (rng.next() < suppressProb) continue;
     }
 

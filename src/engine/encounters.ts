@@ -135,11 +135,15 @@ export interface EnrichOutcomeCtx {
 }
 
 export function enrichOutcome(outcome: EncounterOutcome, ctx: EnrichOutcomeCtx): EncounterOutcome {
-  const out = {
-    ...outcome,
+  const out: EncounterOutcome = {
+    time_lost_days: outcome.time_lost_days,
+    gold_delta: outcome.gold_delta,
     goods_lost: [...outcome.goods_lost],
     goods_gained: [...outcome.goods_gained],
+    unique_items_gained: [...outcome.unique_items_gained],
+    unique_items_lost_ids: [...outcome.unique_items_lost_ids],
     rumors_gained: [...outcome.rumors_gained],
+    crew_changes: [...outcome.crew_changes],
   };
 
   // Flee or fight failure: drop up to 1 (flee) or 2 (fight) random goods we actually hold.
@@ -177,7 +181,17 @@ export function resolveEncounter(
   if (!opt) throw new Error(`Unknown option '${choice}' for encounter`);
   const roll = rng.next() * 100;
   const success = roll < opt.success_pct;
-  const outcome = { ...(success ? opt.on_success : opt.on_failure) };
+  const base = success ? opt.on_success : opt.on_failure;
+  const outcome: EncounterOutcome = {
+    time_lost_days: base.time_lost_days,
+    gold_delta: base.gold_delta,
+    goods_lost: [...base.goods_lost],
+    goods_gained: [...base.goods_gained],
+    unique_items_gained: [...base.unique_items_gained],
+    unique_items_lost_ids: [...base.unique_items_lost_ids],
+    rumors_gained: [...base.rumors_gained],
+    crew_changes: [...base.crew_changes],
+  };
   // Bribe cost is applied regardless of success.
   if (opt.id === "bribe" && opt.cost_gold) {
     outcome.gold_delta = (outcome.gold_delta ?? 0) - opt.cost_gold;
