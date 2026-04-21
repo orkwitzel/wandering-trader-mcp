@@ -77,7 +77,42 @@ docker run -i --rm -v wandering-trader-data:/data wandering-trader:local
 bun test
 ```
 
-70 tests across engine, DB, and integration layers. Includes a replay-determinism test that asserts byte-identical state under a fixed seed and action sequence.
+75 tests across engine, DB, and integration layers. Includes a replay-determinism test that asserts byte-identical state under a fixed seed and action sequence.
+
+## Releases
+
+Versioning is automated by [release-please](https://github.com/googleapis/release-please) from [Conventional Commits](https://www.conventionalcommits.org/). Use the right prefix on every commit to `main` — release-please reads them and decides the next version.
+
+| Commit prefix | Bump | Appears in changelog | Example |
+|---|---|---|---|
+| `feat:` | minor (0.1.0 → 0.2.0) | ✅ "Features" | `feat: hire scouts reveal encounter odds preview` |
+| `fix:` | patch (0.1.0 → 0.1.1) | ✅ "Bug Fixes" | `fix: clamp encounter odds at 5%` |
+| `perf:` | patch | ✅ "Performance" | `perf: memoize archetype price multipliers` |
+| `refactor:` | patch | ✅ "Refactoring" | `refactor: extract findEdge helper` |
+| `chore:` / `docs:` / `test:` / `ci:` | none | ❌ hidden | `chore: tidy imports` |
+| `feat!:` or `BREAKING CHANGE:` footer | **major** (0.1.0 → 1.0.0) | ✅ "Features" with warning | `feat!: rename session_id to run_id` |
+
+Scopes are supported and encouraged: `feat(engine): …`, `fix(mcp): …`, `test(integration): …`.
+
+### What happens after you push
+
+1. The release workflow runs tests + typecheck.
+2. Release-please opens (or updates) a single **Release PR** titled `chore: release X.Y.Z` that bundles everything since the last tag. The PR body is an auto-generated changelog.
+3. You review and merge the Release PR when you're ready to cut a release.
+4. Merging creates the git tag, a GitHub Release, builds the multi-arch Docker image to `ghcr.io/orkwitzel/wandering-trader-mcp:X.Y.Z` (plus `:latest`), and attaches the five platform binaries to the Release.
+
+Individual commits on `main` do **not** cut a release by themselves — only merging the Release PR does. That lets you batch several changes into a single version bump.
+
+### Manually forcing a version bump
+
+If you want to release the current `main` as e.g. `1.0.0` without any qualifying commits, append an empty commit:
+
+```bash
+git commit --allow-empty -m "chore: release 1.0.0" -m "Release-As: 1.0.0"
+git push
+```
+
+Release-please will pick up the `Release-As:` footer on its next run and open a Release PR at that version.
 
 ## Layout
 

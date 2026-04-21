@@ -79,9 +79,21 @@ All tunable numbers (commodity prices, archetype multipliers, encounter rates, h
 - Test what behavior looks like from outside a module, not internal state.
 - Prefer named exports; no default exports.
 
+## Commit messages matter — release-please reads them
+
+This repo uses Conventional Commits + release-please for automated versioning. The prefix on each commit decides the next version when a Release PR is merged:
+
+- `feat:` → minor bump, appears in "Features"
+- `fix:` / `perf:` / `refactor:` → patch bump, appears in changelog
+- `chore:` / `docs:` / `test:` / `ci:` → no release, hidden from changelog
+- `feat!:` or a `BREAKING CHANGE:` footer → major bump
+
+Scopes are encouraged: `feat(engine):`, `fix(mcp):`, `test(integration):`. Full rules + examples in `README.md` under "Releases".
+
 ## Don't
 
 - Don't use `git add -A` or `git add .` — always stage named files.
 - Don't introduce `Math.random()` or `Date.now()` in `src/engine/` or `src/service.ts` (breaks replay).
 - Don't add gameplay decisions to tool handlers — push them into the service or engine.
 - Don't commit unless explicitly asked to.
+- Don't push a non-Conventional-Commit message to `main` — it bypasses release-please and muddies the changelog.
