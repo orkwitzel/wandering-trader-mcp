@@ -76,16 +76,18 @@ export function computeTravelTime(
   return { time, weather, disaster_penalty: disaster, notes };
 }
 
-// Approximate Poisson sample via clamped sum of Bernoullis — simple, fast, enough for gameplay.
-function poissonLike(lambda: number, rng: Rng): number {
-  let count = 0;
-  let remaining = lambda;
-  while (remaining > 0) {
-    const step = Math.min(1, remaining);
-    if (rng.next() < step) count += 1;
-    remaining -= 1;
+// Poisson sample via Knuth algorithm. Deterministic under the provided rng.
+function poissonSample(lambda: number, rng: Rng): number {
+  // Knuth. Cap iterations to avoid runaway in pathological inputs (λ > 10 won't happen here).
+  const L = Math.exp(-lambda);
+  let k = 0;
+  let p = 1;
+  for (let i = 0; i < 40; i++) {
+    k += 1;
+    p *= rng.next();
+    if (p <= L) break;
   }
-  return Math.min(count, 3);
+  return Math.min(k - 1, 3);
 }
 
 const HOSTILE_KINDS = ["bandits", "raiders", "wolves", "extortionists"];
@@ -123,7 +125,7 @@ export function rollEncounters(
   }
 
   const lambda = BASE_ENCOUNTER_RATE * edge.distance * TERRAIN_ENCOUNTER_RATE[edge.terrain] * (1 + (envMult - 1) * 0.4);
-  const nRaw = poissonLike(lambda, rng);
+  const nRaw = poissonSample(lambda, rng);
 
   const bodyguards = crew.filter(c => c.kind === "bodyguard").length;
   const desertGuides = crew.filter(c => c.kind === "desert_guide").length;
