@@ -38,5 +38,7 @@ test("a greedy bot can finish a run with a valid final score", () => {
   }
 
   const final = svc.endGame(sessionId);
-  expect(final.final_score).toBeGreaterThanOrEqual(0);
+  // A functioning run: the loop didn't hit its safety cap, and we got a real score.
+  expect(safety).toBeLessThan(200);
+  expect(final.final_score).toBeGreaterThan(0);
 });
