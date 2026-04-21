@@ -27,6 +27,25 @@ claude mcp add wandering-trader -- bun run /absolute/path/to/wandering-trader/sr
 
 Then ask Claude to *"start a wandering-trader run and narrate it"*.
 
+### Option 3 — Docker
+
+No Bun install needed. From the repo root:
+
+```bash
+docker compose build
+docker compose run --rm wandering-trader
+```
+
+SQLite state is persisted in a named volume (`wandering-trader-data`) so runs survive across invocations.
+
+To wire the container into an MCP client, point it at a `docker run` command:
+
+```bash
+docker run -i --rm -v wandering-trader-data:/data wandering-trader:local
+```
+
+`-i` keeps stdin open so the client can speak MCP. The `--rm` removes the ephemeral container once the client disconnects.
+
 ## Tests
 
 ```bash

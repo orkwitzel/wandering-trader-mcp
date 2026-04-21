@@ -1,0 +1,11 @@
+services:
+  wandering-trader:
+    build: .
+    image: wandering-trader:local
+    stdin_open: true
+    tty: false
+    volumes:
+      - wandering-trader-data:/data
+
+volumes:
+  wandering-trader-data:

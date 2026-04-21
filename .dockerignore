@@ -1,0 +1,12 @@
+node_modules
+.git
+tests
+docs
+*.md
+!README.md
+.cursor
+.vscode
+.idea
+.DS_Store
+wandering-trader.db
+wandering-trader.db-*
