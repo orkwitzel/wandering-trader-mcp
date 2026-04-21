@@ -11,13 +11,11 @@ test("resolve_encounter progresses a leg that had an encounter", () => {
   // If 300 seeds can't trigger one, something is wrong with encounter rolling.
   let sid = "";
   let enc: { options: { id: string; success_pct: number; cost_gold?: number }[] } | null = null;
-  let beforeDay = 0;
   for (let seed = 1; seed < 300 && !enc; seed++) {
     const s = svc.startGame({ seed });
     const state = svc.getState(s.session_id);
     const neighbor = state.world.edges.find(e => e.a === s.starting_city.id || e.b === s.starting_city.id)!;
     const destId = neighbor.a === s.starting_city.id ? neighbor.b : neighbor.a;
-    beforeDay = svc.getState(s.session_id).day;
     const res = svc.travel(s.session_id, destId);
     if (res.outcome === "encounter") { sid = s.session_id; enc = res.encounter; break; }
   }
