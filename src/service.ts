@@ -50,6 +50,7 @@ export interface Service {
         estimated_wage_cost: number }
     | { ok: false; error: string };
   travel(sessionId: string, destinationCityId: string):
+    | { ok: false; error: string }
     | { outcome: "arrived"; day: number; arrived_at: { id: string; name: string }; notes: string[] }
     | { outcome: "encounter"; day: number; encounter: { id: string; category: string; kind: string; narrative_seed: string; options: { id: EncounterOption["id"]; success_pct: number; cost_gold?: number }[] } }
     | { outcome: "ended"; final_score: number };
@@ -364,7 +365,7 @@ export function createService(db: Database): Service {
       const loaded = requireActiveGame(db, sessionId);
       const state = loaded.state;
       const edge = findEdge(state.world, state.current_city_id, destinationCityId);
-      if (!edge) throw new Error("destination is not a direct neighbor");
+      if (!edge) return { ok: false, error: "destination is not a direct neighbor" };
 
       const rng = deserializeRng(loaded.rng_state);
       const carried = totalWeight(state.inventory);

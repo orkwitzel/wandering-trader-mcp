@@ -17,7 +17,7 @@ function runScript(seed: number): any {
   const e = state.world.edges.find(x => x.a === state.current_city_id || x.b === state.current_city_id)!;
   const dest = e.a === state.current_city_id ? e.b : e.a;
   const r = svc.travel(sid, dest);
-  if (r.outcome === "encounter") {
+  if ("outcome" in r && r.outcome === "encounter") {
     svc.resolveEncounter(sid, r.encounter.options[0]!.id);
   }
   const end = svc.endGame(sid);

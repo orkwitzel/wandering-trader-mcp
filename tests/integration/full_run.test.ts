@@ -21,7 +21,7 @@ test("a greedy bot can finish a run with a valid final score", () => {
       if (opts.length === 0) break;
       const best = [...opts].sort((a, b) => b.success_pct - a.success_pct)[0]!;
       const r = svc.resolveEncounter(sessionId, best.id);
-      if (r.outcome === "ended") break;
+      if ("outcome" in r && r.outcome === "ended") break;
       continue;
     }
 
@@ -34,11 +34,14 @@ test("a greedy bot can finish a run with a valid final score", () => {
     const neighborEdge = state.world.edges.find(e => e.a === state.current_city_id || e.b === state.current_city_id)!;
     const dest = neighborEdge.a === state.current_city_id ? neighborEdge.b : neighborEdge.a;
     const r = svc.travel(sessionId, dest);
-    if (r.outcome === "ended") break;
+    if ("outcome" in r && r.outcome === "ended") break;
   }
 
   const final = svc.endGame(sessionId);
   // A functioning run: the loop didn't hit its safety cap, and we got a real score.
   expect(safety).toBeLessThan(200);
   expect(final.final_score).toBeGreaterThan(0);
+  // The bot visited at least 2 cities (starting + one travel).
+  const final_state = svc.getState(sessionId);
+  expect(final_state.visited_city_ids.length).toBeGreaterThanOrEqual(2);
 });

@@ -151,6 +151,10 @@ export function enrichOutcome(outcome: EncounterOutcome, ctx: EnrichOutcomeCtx):
       const pick = ctx.rng.pick(available);
       out.goods_lost.push({ commodity: pick.commodity, quantity: 1 });
     }
+    // Coalesce duplicate commodity entries that can arise when two picks land on the same good.
+    const coalesced = new Map<Commodity, number>();
+    for (const g of out.goods_lost) coalesced.set(g.commodity, (coalesced.get(g.commodity) ?? 0) + g.quantity);
+    out.goods_lost = [...coalesced.entries()].map(([commodity, quantity]) => ({ commodity, quantity }));
   }
 
   // Parley success: generate a low-confidence archetype rumor about another city.

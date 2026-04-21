@@ -12,7 +12,7 @@ test("travel advances day and either arrives or yields an encounter", () => {
   const dest = neighbor.a === s.starting_city.id ? neighbor.b : neighbor.a;
   const before = svc.getState(s.session_id).day;
   const res = svc.travel(s.session_id, dest);
-  expect(res.outcome === "arrived" || res.outcome === "encounter").toBe(true);
+  expect("outcome" in res && (res.outcome === "arrived" || res.outcome === "encounter")).toBe(true);
   const after = svc.getState(s.session_id).day;
   expect(after).toBeGreaterThan(before);
 });
@@ -29,6 +29,8 @@ test("travel to a non-neighbor fails", () => {
   );
   const far = state.world.cities.find(c => !neighbors.has(c.id) && c.id !== s.starting_city.id);
   if (far) {
-    expect(() => svc.travel(s.session_id, far.id)).toThrow();
+    const r = svc.travel(s.session_id, far.id);
+    expect("ok" in r && r.ok === false).toBe(true);
+    if ("ok" in r && !r.ok) expect(r.error).toContain("neighbor");
   }
 });
