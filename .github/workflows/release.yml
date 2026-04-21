@@ -102,3 +102,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release upload ${{ needs.release.outputs.tag }} wandering-trader-${{ matrix.suffix }}${{ matrix.ext }} --clobber
+
+  deploy-fly:
+    needs: [release, publish-docker]
+    if: needs.release.outputs.released == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: fly-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release.outputs.tag }}
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Deploy to Fly
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          flyctl deploy --remote-only \
+            --image ghcr.io/${GITHUB_REPOSITORY,,}:${{ needs.release.outputs.version }}

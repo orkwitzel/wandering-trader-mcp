@@ -47,6 +47,7 @@ bun test
 ## Documentation
 
 - [`docs/installing.md`](docs/installing.md) — every install channel in detail (binaries, container, source, Docker Compose)
+- [`docs/hosting.md`](docs/hosting.md) — deploy the HTTP-mode server to Fly.io
 - [`docs/committing.md`](docs/committing.md) — conventional-commits prefix table (decides each version bump)
 - [`docs/releases.md`](docs/releases.md) — how auto-versioning and artifact publishing work
 - [`AGENTS.md`](AGENTS.md) — contributor guide for humans and AI agents
