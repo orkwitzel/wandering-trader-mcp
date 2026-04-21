@@ -1,4 +1,4 @@
-import type { Crew, EncounterOption, EncounterOutcome, PendingEncounter, HireKind } from "./types";
+import type { Crew, Commodity, EncounterOption, EncounterOutcome, PendingEncounter, HireKind } from "./types";
 import {
   BASE_BRIBE_SUCCESS, BASE_ENVIRONMENTAL_SUCCESS, BASE_FIGHT_SUCCESS,
   BASE_FLEE_SUCCESS, BASE_PARLEY_SUCCESS,
@@ -51,7 +51,7 @@ function hostileOptions(_kind: string, weight: number, crew: Crew[]): EncounterO
     {
       id: "flee", success_pct: flee_pct,
       on_success: succ({ time_lost_days: 0.3 }),
-      on_failure: succ({ time_lost_days: 0.5, goods_lost: [] /* filled on apply */ }),
+      on_failure: succ({ time_lost_days: 0.5 }),
     },
     {
       id: "bribe", success_pct: bribe_pct, cost_gold: 60,
@@ -60,8 +60,8 @@ function hostileOptions(_kind: string, weight: number, crew: Crew[]): EncounterO
     },
     {
       id: "parley", success_pct: parley_pct,
-      on_success: succ({ /* rumor gained on apply */ }),
-      on_failure: succ({ time_lost_days: 0.3, gold_delta: -30 }),
+      on_success: succ({}),
+      on_failure: succ({ time_lost_days: 0.3, gold_delta: -60 }),
     },
   ];
 }
@@ -122,6 +122,50 @@ export interface ResolutionResult {
   option_id: EncounterOption["id"];
   success: boolean;
   outcome: EncounterOutcome;
+}
+
+export interface EnrichOutcomeCtx {
+  optionId: EncounterOption["id"];
+  success: boolean;
+  category: PendingEncounter["category"];
+  heldCommodities: { commodity: Commodity; quantity: number }[];
+  otherCities: { id: string; name: string; archetype: string }[];
+  rng: Rng;
+  day: number;
+}
+
+export function enrichOutcome(outcome: EncounterOutcome, ctx: EnrichOutcomeCtx): EncounterOutcome {
+  const out = {
+    ...outcome,
+    goods_lost: [...outcome.goods_lost],
+    goods_gained: [...outcome.goods_gained],
+    rumors_gained: [...outcome.rumors_gained],
+  };
+
+  // Flee or fight failure: drop up to 1 (flee) or 2 (fight) random goods we actually hold.
+  if (!ctx.success && (ctx.optionId === "flee" || ctx.optionId === "fight" || ctx.optionId === "parley")) {
+    const available = ctx.heldCommodities.filter(c => c.quantity > 0);
+    const n = ctx.optionId === "fight" ? Math.min(2, available.length) : Math.min(1, available.length);
+    for (let i = 0; i < n; i++) {
+      const pick = ctx.rng.pick(available);
+      out.goods_lost.push({ commodity: pick.commodity, quantity: 1 });
+    }
+  }
+
+  // Parley success: generate a low-confidence archetype rumor about another city.
+  if (ctx.success && ctx.optionId === "parley" && ctx.otherCities.length > 0) {
+    const target = ctx.rng.pick(ctx.otherCities);
+    out.rumors_gained.push({
+      id: `r-parley-${ctx.day.toFixed(2)}-${ctx.rng.nextInt(0, 0x7fffffff).toString(36)}`,
+      about_city_id: target.id,
+      topic: "archetype",
+      text: `A bandit lets slip that ${target.name} is a ${target.archetype.replace("_", " ")}.`,
+      heard_on_day: ctx.day,
+      confidence: "low",
+    });
+  }
+
+  return out;
 }
 
 export function resolveEncounter(

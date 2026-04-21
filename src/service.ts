@@ -11,7 +11,7 @@ import type { LoadedGame } from "./db/games";
 import { STARTING_GOLD, SELL_SPREAD, HIRE_SPECS } from "./engine/content";
 import { totalWeight, uniqueItemSellPrice } from "./engine/inventory";
 import { computeTravelTime, rollEncounters } from "./engine/travel";
-import { buildEncounterOptions, resolveEncounter } from "./engine/encounters";
+import { buildEncounterOptions, resolveEncounter, enrichOutcome } from "./engine/encounters";
 import { tallyFinalScore } from "./engine/tally";
 
 export interface StartGameArgs { seed?: number; }
@@ -394,7 +394,16 @@ export function createService(db: Database): Service {
       const rng = deserializeRng(loaded.rng_state);
 
       const result = resolveEncounter(enc.options, choice, rng);
-      const outcome = result.outcome;
+      const heldCommodities = COMMODITIES.map(c => ({ commodity: c, quantity: state.inventory.commodities[c] }));
+      const otherCities = state.world.cities
+        .filter(c => c.id !== state.current_city_id)
+        .map(c => ({ id: c.id, name: c.name, archetype: c.archetype }));
+      const outcome = enrichOutcome(result.outcome, {
+        optionId: result.option_id,
+        success: result.success,
+        category: enc.category,
+        heldCommodities, otherCities, rng, day: state.day,
+      });
       state.gold = Math.max(0, state.gold + outcome.gold_delta);
       state.day += outcome.time_lost_days;
       for (const { commodity, quantity } of outcome.goods_lost) {

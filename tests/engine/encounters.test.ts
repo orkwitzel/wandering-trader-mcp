@@ -1,6 +1,5 @@
 import { test, expect } from "bun:test";
-import { buildEncounterOptions } from "../../src/engine/encounters";
-import { resolveEncounter } from "../../src/engine/encounters";
+import { buildEncounterOptions, resolveEncounter, enrichOutcome } from "../../src/engine/encounters";
 import { createRng } from "../../src/engine/rng";
 import type { Crew, PendingEncounter } from "../../src/engine/types";
 
@@ -80,4 +79,75 @@ test("resolveEncounter returns on_failure branch when forced low roll beats thre
 test("resolveEncounter throws on unknown option id", () => {
   const opts = buildEncounterOptions({ id: "e1", category: "hostile", kind: "bandits", narrative_seed: "", options: [] }, 0, []);
   expect(() => resolveEncounter(opts, "help" as any, createRng(1))).toThrow();
+});
+
+// enrichOutcome tests — written before implementation (TDD).
+test("enrichOutcome: flee-failure produces at least one goods_lost entry given held commodities", () => {
+  const rng = createRng(42);
+  const opts = buildEncounterOptions(encounter("hostile", "bandits"), 0, []);
+  const fleeOpt = opts.find(o => o.id === "flee")!;
+  const baseOutcome = { ...fleeOpt.on_failure, goods_lost: [], goods_gained: [], rumors_gained: [] };
+  const result = enrichOutcome(baseOutcome, {
+    optionId: "flee",
+    success: false,
+    category: "hostile",
+    heldCommodities: [{ commodity: "grain", quantity: 5 }, { commodity: "salt", quantity: 3 }],
+    otherCities: [],
+    rng,
+    day: 1,
+  });
+  expect(result.goods_lost.length).toBeGreaterThan(0);
+});
+
+test("enrichOutcome: flee-failure produces no goods_lost when inventory is empty", () => {
+  const rng = createRng(42);
+  const opts = buildEncounterOptions(encounter("hostile", "bandits"), 0, []);
+  const fleeOpt = opts.find(o => o.id === "flee")!;
+  const baseOutcome = { ...fleeOpt.on_failure, goods_lost: [], goods_gained: [], rumors_gained: [] };
+  const result = enrichOutcome(baseOutcome, {
+    optionId: "flee",
+    success: false,
+    category: "hostile",
+    heldCommodities: [{ commodity: "grain", quantity: 0 }],
+    otherCities: [],
+    rng,
+    day: 1,
+  });
+  expect(result.goods_lost.length).toBe(0);
+});
+
+test("enrichOutcome: parley-success produces a rumor when other cities exist", () => {
+  const rng = createRng(99);
+  const opts = buildEncounterOptions(encounter("hostile", "bandits"), 0, []);
+  const parleyOpt = opts.find(o => o.id === "parley")!;
+  const baseOutcome = { ...parleyOpt.on_success, goods_lost: [], goods_gained: [], rumors_gained: [] };
+  const result = enrichOutcome(baseOutcome, {
+    optionId: "parley",
+    success: true,
+    category: "hostile",
+    heldCommodities: [],
+    otherCities: [{ id: "c2", name: "Thornwall", archetype: "border" }],
+    rng,
+    day: 2,
+  });
+  expect(result.rumors_gained.length).toBe(1);
+  expect(result.rumors_gained[0]!.about_city_id).toBe("c2");
+  expect(result.rumors_gained[0]!.confidence).toBe("low");
+});
+
+test("enrichOutcome: parley-success produces no rumor when no other cities", () => {
+  const rng = createRng(99);
+  const opts = buildEncounterOptions(encounter("hostile", "bandits"), 0, []);
+  const parleyOpt = opts.find(o => o.id === "parley")!;
+  const baseOutcome = { ...parleyOpt.on_success, goods_lost: [], goods_gained: [], rumors_gained: [] };
+  const result = enrichOutcome(baseOutcome, {
+    optionId: "parley",
+    success: true,
+    category: "hostile",
+    heldCommodities: [],
+    otherCities: [],
+    rng,
+    day: 2,
+  });
+  expect(result.rumors_gained.length).toBe(0);
 });
