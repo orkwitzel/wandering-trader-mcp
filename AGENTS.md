@@ -79,16 +79,42 @@ All tunable numbers (commodity prices, archetype multipliers, encounter rates, h
 - Test what behavior looks like from outside a module, not internal state.
 - Prefer named exports; no default exports.
 
-## Commit messages matter — release-please reads them
+## Commit messages matter — semantic-release reads them
 
-This repo uses Conventional Commits + release-please for automated versioning. The prefix on each commit decides the next version when a Release PR is merged:
+This repo uses [Conventional Commits](https://www.conventionalcommits.org/) + semantic-release for automated versioning. **Every push to `main` that contains a qualifying commit cuts a release immediately** — no PRs, no approval step.
 
-- `feat:` → minor bump, appears in "Features"
-- `fix:` / `perf:` / `refactor:` → patch bump, appears in changelog
-- `chore:` / `docs:` / `test:` / `ci:` → no release, hidden from changelog
-- `feat!:` or a `BREAKING CHANGE:` footer → major bump
+The prefix on each commit decides the bump:
 
-Scopes are encouraged: `feat(engine):`, `fix(mcp):`, `test(integration):`. Full rules + examples in `README.md` under "Releases".
+| Prefix | Bump | Appears in changelog |
+|---|---|---|
+| `feat:` | minor (0.1.0 → 0.2.0) | ✅ Features |
+| `fix:` / `perf:` / `refactor:` | patch (0.1.0 → 0.1.1) | ✅ |
+| `chore:` / `docs:` / `test:` / `ci:` | none | ❌ hidden |
+| `feat!:` or `BREAKING CHANGE:` footer | major (0.1.0 → 1.0.0) | ✅ with ⚠️ |
+
+Scopes are encouraged: `feat(engine):`, `fix(mcp):`, `test(integration):`.
+
+### Examples
+
+```
+feat(engine): add sandstorm severity tiers
+fix(mcp): clamp encounter odds to [5, 95]
+refactor: extract findEdge helper
+chore: tidy imports
+feat(mcp)!: rename session_id to run_id
+
+BREAKING CHANGE: all MCP tool inputs that previously took `session_id`
+now take `run_id`. Clients must update their tool calls.
+```
+
+### Rules of thumb
+
+- **Use imperative mood** ("add", "fix") — not past tense.
+- **Don't mix types** — if a change is both `feat:` and `fix:`, split it into two commits.
+- **Scope aids changelog grouping** — `feat(engine):` vs `feat(mcp):` show up cleanly.
+- **When in doubt**, prefer `fix:` over `feat:` for surprising-but-corrective behavior; keeps the minor-version trail quieter.
+
+Full guide with more examples: [`docs/committing.md`](docs/committing.md). Release flow details: [`docs/releases.md`](docs/releases.md).
 
 ## Don't
 
