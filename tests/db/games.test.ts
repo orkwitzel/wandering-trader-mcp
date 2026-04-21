@@ -17,7 +17,7 @@ function fakeState(id = "abc"): GameState {
     inventory: { commodities: { grain: 0, salt: 0, spice: 0, silk: 0, iron: 0, furs: 0, wine: 0, gems: 0 }, unique_items: [] },
     crew: [], current_city_id: "c0", visited_city_ids: ["c0"], known_rumors: [],
     world: { cities: [], edges: [], events: [] },
-    history: { encounters_survived: 0, cities_visited: 1, events_discovered: 0, best_trade_profit: 0 },
+    history: { encounters_resolved: 0, cities_visited: 1 },
   };
 }
 

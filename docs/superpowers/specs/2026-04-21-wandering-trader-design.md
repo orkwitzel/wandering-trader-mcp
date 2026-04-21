@@ -18,7 +18,7 @@ A stateless MCP server. All game state lives in SQLite keyed by `session_id` (a 
 - `src/mcp/` — MCP tool handlers. Thin: parse args, call engine, format response.
 - `src/engine/` — pure game logic (world generation, economy tick, encounter resolver, odds calculator, travel-time formula). No I/O. State-in / state-out.
 - `src/db/` — SQLite access and migrations.
-- `src/content/` — static data: commodity list, archetype tables, encounter tables, rumor templates, name-part tables.
+- `src/engine/content.ts` — static data: commodity list, archetype tables, encounter tables, rumor templates, name-part tables.
 
 **Determinism.** Each game has a seeded PRNG whose state is persisted in SQLite. All randomness (map generation, price drift, encounter rolls, weather) draws from this PRNG. Bugs are reproducible; replay tests are trivial.
 

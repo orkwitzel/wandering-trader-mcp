@@ -139,10 +139,8 @@ export interface GameState {
   world: World;
   pending_leg?: PendingLeg;
   history: {
-    encounters_survived: number;
+    encounters_resolved: number;
     cities_visited: number;
-    events_discovered: number;
-    best_trade_profit: number;
   };
 }
 

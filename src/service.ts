@@ -100,7 +100,7 @@ function visibleCityIds(state: GameState): Set<string> {
 }
 
 function arriveAt(
-  db: Database, _loaded: LoadedGame, state: GameState, destinationCityId: string, rng: Rng, notes: string[],
+  db: Database, state: GameState, destinationCityId: string, rng: Rng, notes: string[],
 ): { outcome: "arrived"; day: number; arrived_at: { id: string; name: string }; notes: string[] }
   | { outcome: "ended"; final_score: number } {
   state.current_city_id = destinationCityId;
@@ -150,7 +150,7 @@ export function createService(db: Database): Service {
         visited_city_ids: [startingCity.id],
         known_rumors: [],
         world,
-        history: { encounters_survived: 0, cities_visited: 1, events_discovered: 0, best_trade_profit: 0 },
+        history: { encounters_resolved: 0, cities_visited: 1 },
       };
 
       saveGame(db, state, serializeRng(rng));
@@ -391,7 +391,7 @@ export function createService(db: Database): Service {
       }
 
       // No encounters — straight arrival.
-      return arriveAt(db, loaded, state, destinationCityId, rng, travelCalc.notes);
+      return arriveAt(db, state, destinationCityId, rng, travelCalc.notes);
     },
 
     resolveEncounter(sessionId: string, choice: EncounterOption["id"]) {
@@ -428,7 +428,7 @@ export function createService(db: Database): Service {
       for (const cc of outcome.crew_changes) {
         if (cc.change === "lost") state.crew = state.crew.filter(c => c.id !== cc.crew_id);
       }
-      state.history.encounters_survived += 1;
+      state.history.encounters_resolved += 1;
 
       appendEvent(db, sessionId, state.day, "encounter_resolved", {
         enc_id: enc.id, choice, success: result.success, gold_delta: outcome.gold_delta,
@@ -447,7 +447,7 @@ export function createService(db: Database): Service {
 
       // Arrive at destination.
       const destId = state.pending_leg.to_city_id;
-      return arriveAt(db, loaded, state, destId, rng, []);
+      return arriveAt(db, state, destId, rng, []);
     },
 
     endGame(sessionId) {
