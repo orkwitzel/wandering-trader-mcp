@@ -296,6 +296,9 @@ export function createService(db: Database): Service {
 
     listen(sessionId) {
       const loaded = requireActiveGame(db, sessionId);
+      if (loaded.state.pending_leg?.current_encounter) {
+        throw new Error("cannot listen while an encounter is pending");
+      }
       const state = loaded.state;
       state.day += 0.1;
       // Generate 0..2 rumors referencing random other cities.
@@ -414,6 +417,10 @@ export function createService(db: Database): Service {
       });
       state.gold = Math.max(0, state.gold + outcome.gold_delta);
       state.day += outcome.time_lost_days;
+      if (outcome.time_lost_days > 0 && state.crew.length > 0) {
+        const extraWage = Math.round(state.crew.reduce((s, c) => s + c.daily_wage, 0) * outcome.time_lost_days);
+        state.gold = Math.max(0, state.gold - extraWage);
+      }
       for (const { commodity, quantity } of outcome.goods_lost) {
         state.inventory.commodities[commodity] = Math.max(0, state.inventory.commodities[commodity] - quantity);
       }

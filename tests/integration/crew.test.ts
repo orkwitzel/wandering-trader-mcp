@@ -2,6 +2,7 @@ import { test, expect } from "bun:test";
 import { Database } from "bun:sqlite";
 import { initSchema } from "../../src/db/schema";
 import { createService } from "../../src/service";
+import type { Service } from "../../src/service";
 
 test("hire deducts fee and adds crew", () => {
   const db = new Database(":memory:"); initSchema(db);
@@ -59,4 +60,20 @@ test("listen advances day by ~0.1 and may add rumors", () => {
   const afterDay = svc.getState(s.session_id).day;
   expect(afterDay).toBeGreaterThan(beforeDay);
   expect(afterDay - beforeDay).toBeCloseTo(0.1, 2);
+});
+
+test("listen finalizes the run if it crosses DAY_LIMIT", () => {
+  const db = new Database(":memory:"); initSchema(db);
+  const svc = createService(db);
+  const s = svc.startGame({ seed: 24 });
+  // Advance the clock close to DAY_LIMIT by travelling.
+  // Faster: forcibly bump day via many listens. listen advances ~0.1 day each.
+  let result: ReturnType<Service["listen"]> = svc.listen(s.session_id);
+  for (let i = 0; i < 80 && !("ended" in result && result.ended); i++) {
+    result = svc.listen(s.session_id);
+  }
+  expect("ended" in result && result.ended).toBe(true);
+  if ("ended" in result && result.ended) {
+    expect(result.final_score).toBeGreaterThanOrEqual(0);
+  }
 });
