@@ -58,7 +58,7 @@ export function sellPriceFor(buyPrice: number, spread: number): number {
 
 const UNIQUE_CATEGORIES: UniqueItemCategory[] = ["art", "weapon", "relic", "book", "curio"];
 
-export function populateCityOffers(city: City, rng: import("./rng").Rng): void {
+export function populateCityOffers(city: City, rng: Rng): void {
   // Rare items: 0..3
   const numItems = rng.nextInt(0, 4);
   city.unique_offers = [];

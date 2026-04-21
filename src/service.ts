@@ -110,11 +110,11 @@ function arriveAt(
   }
   const city = state.world.cities.find(c => c.id === destinationCityId)!;
   populateCityOffers(city, rng);
+  // Arrival always ticks — the final tally scores against the post-tick sell prices.
   priceTick(state.world.cities, state.world.events, state.day, rng);
 
   // If day >= DAY_LIMIT, finalize.
   if (state.day >= DAY_LIMIT) {
-    state.pending_leg = undefined;
     const finalCity = state.world.cities.find(c => c.id === state.current_city_id)!;
     const { total } = tallyFinalScore(state.gold, state.inventory, finalCity);
     saveGame(db, state, serializeRng(rng), "completed");
@@ -384,7 +384,6 @@ export function createService(db: Database): Service {
         state.pending_leg = {
           from_city_id: state.current_city_id,
           to_city_id: destinationCityId,
-          total_travel_time: travelCalc.time,
           remaining_encounters: encounters.slice(1),
           current_encounter: encounters[0]!,
         };
@@ -417,6 +416,10 @@ export function createService(db: Database): Service {
       });
       state.gold = Math.max(0, state.gold + outcome.gold_delta);
       state.day += outcome.time_lost_days;
+      // Apply crew_changes first so the extra wage reflects the new crew composition.
+      for (const cc of outcome.crew_changes) {
+        if (cc.change === "lost") state.crew = state.crew.filter(c => c.id !== cc.crew_id);
+      }
       if (outcome.time_lost_days > 0 && state.crew.length > 0) {
         const extraWage = Math.round(state.crew.reduce((s, c) => s + c.daily_wage, 0) * outcome.time_lost_days);
         state.gold = Math.max(0, state.gold - extraWage);
@@ -432,9 +435,6 @@ export function createService(db: Database): Service {
         state.inventory.unique_items = state.inventory.unique_items.filter(u => u.id !== id);
       }
       for (const r of outcome.rumors_gained) state.known_rumors.push(r);
-      for (const cc of outcome.crew_changes) {
-        if (cc.change === "lost") state.crew = state.crew.filter(c => c.id !== cc.crew_id);
-      }
       state.history.encounters_resolved += 1;
 
       appendEvent(db, sessionId, state.day, "encounter_resolved", {

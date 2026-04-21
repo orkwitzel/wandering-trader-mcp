@@ -135,15 +135,12 @@ export interface EnrichOutcomeCtx {
 }
 
 export function enrichOutcome(outcome: EncounterOutcome, ctx: EnrichOutcomeCtx): EncounterOutcome {
+  // Defensive copy of mutable arrays — safe to call on any EncounterOutcome, even aliased ones.
   const out: EncounterOutcome = {
-    time_lost_days: outcome.time_lost_days,
-    gold_delta: outcome.gold_delta,
+    ...outcome,
     goods_lost: [...outcome.goods_lost],
     goods_gained: [...outcome.goods_gained],
-    unique_items_gained: [...outcome.unique_items_gained],
-    unique_items_lost_ids: [...outcome.unique_items_lost_ids],
     rumors_gained: [...outcome.rumors_gained],
-    crew_changes: [...outcome.crew_changes],
   };
 
   // Flee or fight failure: drop up to 1 (flee) or 2 (fight) random goods we actually hold.

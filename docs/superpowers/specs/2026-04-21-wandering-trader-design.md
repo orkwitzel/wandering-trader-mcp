@@ -316,10 +316,8 @@ interface GameState {
   world: World;                // map, cities, edges, events
   pending_leg?: PendingLeg;    // if mid-travel-with-encounter
   history: {
-    best_trade?: TradeRecord;
-    encounters_survived: number;
+    encounters_resolved: number;
     cities_visited: number;
-    events_discovered: number;
   };
 }
 
