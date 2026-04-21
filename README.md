@@ -2,14 +2,39 @@
 
 A single-player MCP game. You play a trader with seven in-game days to cross a randomly generated region, buying goods cheap in one city and selling them dear in another. Roads are not safe — bandits, sandstorms, and lost-at-sea incidents all cost time or goods. The LLM narrates the journey on top of deterministic, server-rolled mechanics.
 
-## Running
+## Install
+
+Pick whichever matches your setup. The server always speaks MCP over stdio — connect it to a client (see below).
+
+### From source
 
 ```bash
 bun install
 bun run src/index.ts
 ```
 
-The server speaks MCP over stdio. It won't do anything useful on its own — connect it to a client.
+### Pre-built binary (GitHub Releases)
+
+Each tagged release ships standalone binaries for Linux, macOS (Intel and Apple Silicon), and Windows. No Bun install needed.
+
+```bash
+# macOS Apple Silicon — adjust arch/OS for your machine
+curl -L -o wandering-trader \
+  https://github.com/orkwitzel/wandering-trader-mcp/releases/latest/download/wandering-trader-darwin-arm64
+chmod +x wandering-trader
+./wandering-trader
+```
+
+Other artifacts: `wandering-trader-linux-x64`, `wandering-trader-linux-arm64`, `wandering-trader-darwin-x64`, `wandering-trader-windows-x64.exe`.
+
+### Container image (GHCR)
+
+```bash
+docker pull ghcr.io/orkwitzel/wandering-trader-mcp:latest
+docker run -i --rm ghcr.io/orkwitzel/wandering-trader-mcp:latest
+```
+
+## Running
 
 ### Option 1 — MCP Inspector (debugger)
 
